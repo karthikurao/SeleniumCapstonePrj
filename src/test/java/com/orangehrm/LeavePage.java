@@ -1,16 +1,14 @@
 package com.orangehrm;
 
+import com.utils.SmartWait;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 
 public class LeavePage {
     private WebDriver driver;
-    private WebDriverWait wait;
+    private SmartWait sw;
 
     // Locators
     private By leaveMenu = By.xpath("//span[text()='Leave']");
@@ -23,59 +21,43 @@ public class LeavePage {
     private By applyLeaveButton = By.cssSelector("button[type='submit']");
     private By myLeaveLink = By.linkText("My Leave");
     private By leaveListTable = By.cssSelector(".oxd-table");
-    private By formLoader = By.cssSelector(".oxd-form-loader");
 
     public LeavePage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-    }
-
-    private void waitForLoaderToDisappear() {
-        try {
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(formLoader));
-        } catch (Exception ignored) { }
+        this.sw = new SmartWait(driver);
     }
 
     public void navigateToLeave() {
-        wait.until(ExpectedConditions.elementToBeClickable(leaveMenu));
-        driver.findElement(leaveMenu).click();
-        waitForLoaderToDisappear();
+        sw.safeClick(leaveMenu);
     }
 
     public void clickApply() {
-        wait.until(ExpectedConditions.elementToBeClickable(applyButton));
-        driver.findElement(applyButton).click();
-        waitForLoaderToDisappear();
+        sw.safeClick(applyButton);
     }
 
     public void selectLeaveType() {
-        wait.until(ExpectedConditions.elementToBeClickable(leaveTypeDropdown));
-        driver.findElement(leaveTypeDropdown).click();
-        wait.until(ExpectedConditions.visibilityOfElementLocated(leaveTypeOption));
-        driver.findElements(leaveTypeOption).get(1).click(); // Select first available leave type
-        waitForLoaderToDisappear();
+        sw.selectFromPopover(leaveTypeDropdown, leaveTypeOption, 1);
     }
 
     public void enterFromDate(String date) {
-        WebElement fromDate = driver.findElement(fromDateField);
-        fromDate.clear();
-        fromDate.sendKeys(date);
+        sw.visible(fromDateField, Duration.ofSeconds(5));
+        driver.findElement(fromDateField).clear();
+        driver.findElement(fromDateField).sendKeys(date);
     }
 
     public void enterToDate(String date) {
-        WebElement toDate = driver.findElement(toDateField);
-        toDate.clear();
-        toDate.sendKeys(date);
+        sw.visible(toDateField, Duration.ofSeconds(5));
+        driver.findElement(toDateField).clear();
+        driver.findElement(toDateField).sendKeys(date);
     }
 
     public void enterComments(String comments) {
+        sw.visible(commentsField, Duration.ofSeconds(5));
         driver.findElement(commentsField).sendKeys(comments);
     }
 
     public void clickApplyLeaveButton() {
-        wait.until(ExpectedConditions.elementToBeClickable(applyLeaveButton));
-        driver.findElement(applyLeaveButton).click();
-        waitForLoaderToDisappear();
+        sw.safeClick(applyLeaveButton);
     }
 
     public void applyLeave(String fromDate, String toDate, String comments) {
@@ -90,15 +72,13 @@ public class LeavePage {
 
     public void navigateToMyLeave() {
         navigateToLeave();
-        wait.until(ExpectedConditions.elementToBeClickable(myLeaveLink));
-        driver.findElement(myLeaveLink).click();
-        waitForLoaderToDisappear();
+        sw.safeClick(myLeaveLink);
     }
 
     public boolean isLeaveListDisplayed() {
         try {
-            wait.until(ExpectedConditions.visibilityOfElementLocated(leaveListTable));
-            return driver.findElement(leaveListTable).isDisplayed();
+            sw.visible(leaveListTable, Duration.ofSeconds(10));
+            return true;
         } catch (Exception e) {
             return false;
         }
