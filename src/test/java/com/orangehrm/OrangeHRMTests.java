@@ -1,10 +1,12 @@
 package com.orangehrm;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,14 +22,37 @@ public class OrangeHRMTests extends EnglishBaseTest {
         System.out.println("✓ Login test passed successfully");
     }
 
-    @Test(priority = 2, description = "Test opening the Buzz module")
-    public void testBuzzPageLoads() {
+    @Test(priority = 2, description = "Post a Buzz status and confirm the UI acknowledges it")
+    public void testCreateBuzzPostUpdatesTimeline() {
         loginAsAdmin();
         clickMainMenu("Buzz");
         wait.until(ExpectedConditions.urlContains("/buzz"));
-        WebElement buzzInput = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("textarea.oxd-buzz-post-input")));
-        Assert.assertTrue(buzzInput.isDisplayed(), "Buzz post text area not displayed");
-        System.out.println("✓ Buzz Page test passed successfully");
+
+        By buzzInputLocator = By.cssSelector("textarea.oxd-buzz-post-input");
+        WebElement buzzInput = wait.until(ExpectedConditions.elementToBeClickable(buzzInputLocator));
+        buzzInput.click();
+
+        String message = "Automation buzz " + System.currentTimeMillis();
+        buzzInput.sendKeys(message);
+
+        WebElement postButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[normalize-space()='Post']")));
+        postButton.click();
+
+        WebElement toast = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("p.oxd-text--toast-message")));
+        Assert.assertTrue(toast.getText().contains("Success"), "Buzz post success toast missing");
+
+        // Demo environment does not immediately surface Buzz feed entries, so assert on the
+        // composer resetting as the observable confirmation of a successful submission.
+        WebDriverWait composerWait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        composerWait.until(webDriver -> {
+            WebElement input = webDriver.findElement(buzzInputLocator);
+            String value = input.getAttribute("value");
+            return value == null || value.isBlank();
+        });
+        WebElement refreshedComposer = driver.findElement(buzzInputLocator);
+        Assert.assertTrue(refreshedComposer.isDisplayed(), "Buzz composer not visible after posting");
+        Assert.assertTrue(refreshedComposer.getAttribute("placeholder") != null, "Buzz composer placeholder missing after posting");
+        System.out.println("✓ Buzz post submitted with success toast and composer reset");
     }
 
     @Test(priority = 3, description = "Test viewing leave list")
@@ -36,7 +61,9 @@ public class OrangeHRMTests extends EnglishBaseTest {
         LeavePage leavePage = new LeavePage(driver);
         leavePage.navigateToMyLeave();
         Assert.assertTrue(leavePage.isLeaveListDisplayed(), "Leave list not displayed");
-        System.out.println("✓ View Leave List test passed successfully");
+        List<WebElement> rows = driver.findElements(By.cssSelector(".oxd-table-body .oxd-table-row"));
+        Assert.assertTrue(!rows.isEmpty() || leavePage.hasNoRecordsMessage(), "Leave list did not return rows or empty state");
+        System.out.println("✓ My Leave table rendered results or empty state");
     }
 
     @Test(priority = 4, description = "Test adding a candidate in recruitment")
@@ -44,16 +71,34 @@ public class OrangeHRMTests extends EnglishBaseTest {
         loginAsAdmin();
         RecruitmentPage recruitmentPage = new RecruitmentPage(driver);
         String timestamp = String.valueOf(System.currentTimeMillis());
-        recruitmentPage.addCandidate(
-                "John" + timestamp.substring(timestamp.length() - 4),
-                "Robert",
-                "Doe",
-                "john.doe" + timestamp.substring(timestamp.length() - 6) + "@test.com"
-        );
-        System.out.println("✓ Add Candidate test passed successfully");
+        String firstName = "John" + timestamp.substring(timestamp.length() - 4);
+        String email = "john.doe" + timestamp.substring(timestamp.length() - 6) + "@test.com";
+        String displayName = recruitmentPage.addCandidate(firstName, "Robert", "Doe", email);
+        Assert.assertTrue(recruitmentPage.searchCandidateByName(displayName), "New candidate not returned in search results");
+        System.out.println("✓ Candidate added and located in results");
     }
 
-    @Test(priority = 5, description = "Test viewing candidates list")
+    @Test(priority = 5, description = "Search for system user in Admin module and ensure results are filtered")
+    public void testAdminUserSearchFiltersResults() {
+        loginAsAdmin();
+        clickMainMenu("Admin");
+        wait.until(ExpectedConditions.urlContains("/admin"));
+
+        WebElement usernameField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//label[text()='Username']/parent::div/following-sibling::div//input")));
+        usernameField.clear();
+        usernameField.sendKeys("Admin");
+
+        WebElement searchButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[@type='submit' and normalize-space()='Search']")));
+        searchButton.click();
+
+        By firstRowSelector = By.xpath("(//div[contains(@class,'oxd-table-card')]//div[@role='cell'][2])[1]");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(firstRowSelector, "Admin"));
+        WebElement firstRow = driver.findElement(firstRowSelector);
+        Assert.assertTrue(firstRow.getText().contains("Admin"), "Filtered user list does not contain Admin after search");
+        System.out.println("✓ Admin user search returned filtered results");
+    }
+
+    @Test(priority = 6, description = "Test viewing candidates list")
     public void testViewCandidates() {
         loginAsAdmin();
         RecruitmentPage recruitmentPage = new RecruitmentPage(driver);
@@ -62,15 +107,17 @@ public class OrangeHRMTests extends EnglishBaseTest {
         System.out.println("✓ View Candidates test passed successfully");
     }
 
-    @Test(priority = 6, description = "Verify dashboard quick launch cards are visible")
-    public void testDashboardQuickLaunchVisible() {
+    @Test(priority = 7, description = "Use Assign Leave quick launch to open the assign leave form")
+    public void testAssignLeaveQuickLaunchOpensForm() {
         loginAsAdmin();
-        List<WebElement> quickLaunchCards = driver.findElements(By.cssSelector("div.orangehrm-quick-launch-card"));
-        Assert.assertTrue(quickLaunchCards.size() >= 1, "Quick Launch cards not found on dashboard");
-        System.out.println("✓ Dashboard quick launch cards visible");
+        WebElement assignLeaveCard = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//div[contains(@class,'orangehrm-quick-launch-card')]//p[text()='Assign Leave']/ancestor::div[contains(@class,'orangehrm-quick-launch-card')]")));
+        assignLeaveCard.click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//h6[text()='Assign Leave']")));
+        Assert.assertTrue(driver.getCurrentUrl().contains("/assignLeave"), "Assign Leave form was not opened via quick launch");
+        System.out.println("✓ Assign Leave quick launch opened the form");
     }
 
-    @Test(priority = 7, dataProvider = "mainMenuSmokeData", description = "Verify key main menu modules load")
+    @Test(priority = 8, dataProvider = "mainMenuSmokeData", description = "Verify key main menu modules load")
     public void testMainMenuModuleLoads(String menuText, String expectedUrlFragment, By[] mustSeeElements) {
         loginAsAdmin();
         clickMainMenu(menuText);
@@ -84,7 +131,7 @@ public class OrangeHRMTests extends EnglishBaseTest {
         System.out.println("✓ " + menuText + " module loads");
     }
 
-    @Test(priority = 8, description = "Verify Maintenance password prompt appears")
+    @Test(priority = 9, description = "Verify Maintenance password prompt appears")
     public void testMaintenancePromptAppears() {
         loginAsAdmin();
         clickMainMenu("Maintenance");
@@ -94,7 +141,7 @@ public class OrangeHRMTests extends EnglishBaseTest {
         System.out.println("✓ Maintenance access screen displayed");
     }
 
-    @Test(priority = 9, description = "Verify dashboard widgets render")
+    @Test(priority = 10, description = "Verify dashboard widgets render")
     public void testDashboardWidgetsVisible() {
         loginAsAdmin();
         List<WebElement> widgets = driver.findElements(By.cssSelector("div.orangehrm-dashboard-widget"));

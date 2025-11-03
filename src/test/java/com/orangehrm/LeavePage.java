@@ -19,6 +19,7 @@ public class LeavePage {
     private final By leaveMenu = By.xpath("//span[text()='Leave']");
     private final By myLeaveLink = By.linkText("My Leave");
     private final By leaveListTable = By.cssSelector(".oxd-table");
+    private final By noRecordsLabel = By.xpath("//span[text()='No Records Found']");
 
     public LeavePage(WebDriver driver) {
         this.driver = driver;
@@ -41,6 +42,10 @@ public class LeavePage {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean hasNoRecordsMessage() {
+        return !driver.findElements(noRecordsLabel).isEmpty();
     }
 
     private void click(By locator) {
