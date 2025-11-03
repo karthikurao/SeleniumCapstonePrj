@@ -21,9 +21,8 @@ public class BaseTest {
         options.addArguments("--start-maximized");
         options.addArguments("--disable-notifications");
         options.addArguments("--remote-allow-origins=*");
-        // Enable headless via -Dheadless=true or env HEADLESS=true
+        // Only honor JVM property -Dheadless=true; default to headed
         String headlessProp = System.getProperty("headless");
-        if (headlessProp == null) headlessProp = System.getenv("HEADLESS");
         boolean headless = Boolean.parseBoolean(headlessProp != null ? headlessProp : "false");
         if (headless) {
             options.addArguments("--headless=new");

@@ -55,38 +55,58 @@ Run the full suite (UI + API + Cucumber):
 mvn clean test
 ```
 
-Run individual suites:
+Run individual suites (Option B – recommended):
 
-```powershell
-# OrangeHRM UI
-mvn test -Dtest=OrangeHRMTests
+Use class-based selection to avoid shell quoting issues.
 
-# ReqRes API (uses the built-in mock filter)
+```cmd
+:: ReqRes API (fast)
 mvn test -Dtest=ReqResAPITests
 
-# BMI Cucumber scenarios
+:: BMI Cucumber (fast)
 mvn test -Dtest=BMICalculatorRunner
+
+:: OrangeHRM UI (headed)
+mvn test -Dtest=OrangeHRMTests
 ```
+
+Optional: Run by TestNG suite XML (ensure proper quoting in PowerShell)
+
+```cmd
+:: ReqRes API only
+mvn test -Dsurefire.suiteXmlFiles=testng-reqres.xml
+
+:: BMI only
+mvn test -Dsurefire.suiteXmlFiles=testng-bmi.xml
+
+:: OrangeHRM UI only (headed)
+mvn test -Dsurefire.suiteXmlFiles=testng-orangehrm.xml
+```
+
+PowerShell users: quote the -D argument, e.g.
+
+```powershell
+mvn test "-Dsurefire.suiteXmlFiles=testng-reqres.xml"
+```
+
+Note: If you see "Unknown lifecycle phase '.suiteXmlFiles=…'", your shell parsed the -D incorrectly. Prefer Option B (-Dtest=...) or quote as shown above.
 
 Reports are generated under `target/surefire-reports/` and `target/cucumber-reports/` after a run.
 
 ## Run specific suites (fast paths)
 
-You can run focused areas using dedicated TestNG suite files:
-
-```cmd
-mvn -Dsurefire.suiteXmlFiles=testng-reqres.xml test    // ReqRes API only
-mvn -Dsurefire.suiteXmlFiles=testng-bmi.xml test       // BMI Cucumber only
-mvn -Dsurefire.suiteXmlFiles=testng-orangehrm.xml test // OrangeHRM UI only
-```
-
-Or use the helper script with an interactive menu:
+You can also use the interactive helper script:
 
 ```cmd
 run-tests.bat
 ```
 
-It lets you pick All/ReqRes/BMI/OrangeHRM and optionally run headless.
+- 2) ReqRes API only
+- 3) BMI only
+- 4) OrangeHRM UI only (headed)
+- 1) All (headed)
+
+Headless mode is only offered for the fast suites via the menu. You can always force headless explicitly with `-Dheadless=true` if desired.
 
 ### Headless mode
 
