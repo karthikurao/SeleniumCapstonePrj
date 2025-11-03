@@ -1,14 +1,16 @@
 package com.orangehrm;
 
-import com.utils.SmartWait;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
 import java.time.Duration;
 
 public class RecruitmentPage {
     private WebDriver driver;
-    private SmartWait sw;
+    private WebDriverWait wait;
 
     // Locators
     private By recruitmentMenu = By.xpath("//span[text()='Recruitment']");
@@ -27,39 +29,35 @@ public class RecruitmentPage {
 
     public RecruitmentPage(WebDriver driver) {
         this.driver = driver;
-        this.sw = new SmartWait(driver);
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
     public void navigateToRecruitment() {
-        sw.safeClick(recruitmentMenu);
+        click(recruitmentMenu);
     }
 
     public void clickAddButton() {
-        sw.safeClick(addButton);
+        click(addButton);
     }
 
     public void enterFirstName(String firstName) {
-        WebElement el = sw.visible(firstNameField, Duration.ofSeconds(10));
-        el.sendKeys(firstName);
+        type(firstNameField, firstName);
     }
 
     public void enterMiddleName(String middleName) {
-        WebElement el = sw.visible(middleNameField, Duration.ofSeconds(10));
-        el.sendKeys(middleName);
+        type(middleNameField, middleName);
     }
 
     public void enterLastName(String lastName) {
-        WebElement el = sw.visible(lastNameField, Duration.ofSeconds(10));
-        el.sendKeys(lastName);
+        type(lastNameField, lastName);
     }
 
     public void enterEmail(String email) {
-        WebElement el = sw.visible(emailField, Duration.ofSeconds(10));
-        el.sendKeys(email);
+        type(emailField, email);
     }
 
     public void clickSaveButton() {
-        sw.safeClick(saveButton);
+        click(saveButton);
     }
 
     public void addCandidate(String firstName, String middleName, String lastName, String email) {
@@ -74,12 +72,12 @@ public class RecruitmentPage {
 
     public void navigateToCandidates() {
         navigateToRecruitment();
-        sw.safeClick(candidatesLink);
+        click(candidatesLink);
     }
 
     public boolean isCandidateTableDisplayed() {
         try {
-            sw.visible(candidateTable, Duration.ofSeconds(10));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(candidateTable));
             return true;
         } catch (Exception e) {
             return false;
@@ -87,18 +85,29 @@ public class RecruitmentPage {
     }
 
     public void deleteFirstCandidate() {
-        sw.safeClick(deleteButton);
-        sw.safeClick(confirmDeleteButton);
+        click(deleteButton);
+        click(confirmDeleteButton);
     }
 
     public void editFirstCandidate() {
-        sw.safeClick(editButton);
+        click(editButton);
     }
 
     public void updateCandidateMiddleName(String newMiddleName) {
-        WebElement middleName = sw.visible(middleNameField, Duration.ofSeconds(10));
+        WebElement middleName = wait.until(ExpectedConditions.visibilityOfElementLocated(middleNameField));
         middleName.clear();
         middleName.sendKeys(newMiddleName);
         clickSaveButton();
+    }
+
+    private void click(By locator) {
+        WebElement element = wait.until(ExpectedConditions.elementToBeClickable(locator));
+        element.click();
+    }
+
+    private void type(By locator, String value) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        element.clear();
+        element.sendKeys(value);
     }
 }
